@@ -45,12 +45,12 @@ yarn start:prod
 yarn start
 ```
 
-### 本地构建镜像
+### 构建镜像并上传至DockerHub
 
 克隆整个仓库并运行以下命令：
 
 ```sh
-docker build -t alsacework/arkitektonika:<TAG> .
+ docker buildx build --platform linux/amd64,linux/arm64 -t alsaceteam/arkitektonika:dev --push .
 ```
 
 ---

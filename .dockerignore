@@ -6,3 +6,4 @@ nodemon.json
 renovate.json
 LICENSE
 README.md
+dist/

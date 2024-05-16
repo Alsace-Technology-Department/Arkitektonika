@@ -3,7 +3,7 @@ import {Express} from 'express';
 import Logger from "../Logger.js";
 import Arkitektonika from "../Arkitektonika.js";
 import {DOWNLOAD_ROUTER} from "./routes/DownloadRouter.js";
-import {UPLOAD_ROUTER} from "./routes/UploadRouter.js";
+import {UPLOAD_ROUTER, UPLOADIMG_ROUTER} from "./routes/UploadRouter.js";
 import {INDEX_ROUTER} from "./routes/IndexRouter.js";
 import {DELETE_ROUTER} from "./routes/DeleteRouter.js";
 
@@ -26,6 +26,7 @@ export default class ArkitektonikaServer {
         UPLOAD_ROUTER(app, this.app)
         DOWNLOAD_ROUTER(app, this.app)
         DELETE_ROUTER(app, this.app)
+        UPLOADIMG_ROUTER(app, this.app)
     }
 
     public start(port: number = 3000): void {

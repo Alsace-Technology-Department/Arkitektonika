@@ -1,6 +1,6 @@
 # Build the application
 # -> transpile typescript to javascript
-FROM node:lts AS builder
+FROM node:21 AS builder
 
 WORKDIR /usr/src/app
 

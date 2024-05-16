@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  arkitektonika:
+    container_name: Arkitektonika
+    image: alsacework/arkitektonika:1.2
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data # 挂载包含配置文件、数据库和示意图存储的 data 文件夹
+    environment:
+      - LOG_LEVEL=DEBUG   # 如果应该将调试日志打印到控制台

@@ -1,89 +1,129 @@
-import express from "express";
+import express from 'express';
 import fileUpload, {UploadedFile} from 'express-fileupload';
 import Arkitektonika, {SCHEMATIC_DIR} from "../../Arkitektonika.js";
-import * as fs from "fs";
-import path from "path";
-import {decode} from "nbt-ts";
-import Pako from "pako";
+import * as fs from 'fs';
+import path from 'path';
+import {decode} from 'nbt-ts';
+import Pako from 'pako';
+import {toSchem, writeNBTFile} from "../../service/schemService.js";
 
+// 配置文件上传选项
 const UPLOAD_OPTIONS: fileUpload.Options = {
     abortOnLimit: true,
     useTempFiles: true,
-    preserveExtension: ("schematic".length),
+    preserveExtension: "schematic".length,
     createParentPath: true,
     safeFileNames: true,
     limits: {},
     uploadTimeout: 1000 * 15
 };
+
+// 处理预检请求
+const handleOptionsRequest = (req: express.Request, res: express.Response) => {
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.sendStatus(204);
+};
+
+// 处理文件上传和验证
+const validateNBTFile = async (file: UploadedFile, app: Arkitektonika) => {
+    const content = fs.readFileSync(file.tempFilePath);
+    const deflated = Buffer.from(Pako.ungzip(content));
+    const result = decode(deflated, {unnamed: false});
+
+    if (result.value == null) {
+        throw new Error("decoded value is null");
+    }
+
+    if (result.length > app.config.maxSchematicSize) {
+        fs.unlinkSync(file.tempFilePath);
+        throw new Error(`Submitted NBT file exceeds max size of ${app.config.maxSchematicSize} bytes`);
+    }
+
+    return result;
+};
+const validateImageFile = async (file: UploadedFile, app: Arkitektonika) => {
+    const content = fs.readFileSync(file.tempFilePath); // 读取临时文件内容
+    const buffer = await toSchem(content); // 将图像转换为 Schematic NBT 格式
+    const result = decode(buffer);
+
+    if (result.value == null) {
+        throw new Error("decoded value is null");
+    }
+
+    if (result.length > app.config.maxSchematicSize) {
+        fs.unlinkSync(file.tempFilePath);
+        throw new Error(`Submitted NBT file exceeds max size of ${app.config.maxSchematicSize} bytes`);
+    }
+
+    return result;
+};
+
+// 生成下载和删除键
+const generateKeys = async (app: Arkitektonika) => {
+    const downloadKey = await app.dataStorage.generateDownloadKey(app.config.maxIterations);
+    const deleteKey = await app.dataStorage.generateDeletionKey(app.config.maxIterations);
+    return {downloadKey, deleteKey};
+};
+
+// 存储记录
+const storeSchematicRecord = async (app: Arkitektonika, file: UploadedFile, downloadKey: string, deleteKey: string) => {
+    const record = await app.dataStorage.storeSchematicRecord({
+        downloadKey,
+        deleteKey,
+        fileName: file.name
+    });
+
+    await file.mv(path.join(SCHEMATIC_DIR, downloadKey));
+    return record;
+};
+
+// 定义 /upload 路由
 export const UPLOAD_ROUTER = (app: Arkitektonika, router: express.Application) => {
-    router.options('/upload', (req, res) => {
-        res.setHeader('Access-Control-Allow-Methods', 'POST');
-        res.sendStatus(204);
-    })
-    router.post('/upload', fileUpload(UPLOAD_OPTIONS), (async (req, res) => {
+    router.options('/upload', handleOptionsRequest);
+
+    router.post('/upload', fileUpload(UPLOAD_OPTIONS), async (req, res) => {
         const file = req.files?.schematic as UploadedFile;
 
-        // check if request contains file
         if (!file) {
-            return res.status(400).send({
-                error: 'Missing file'
-            });
+            return res.status(400).send({error: 'Missing file'});
         }
 
-        // Validate nbt file
         try {
-            const content = fs.readFileSync(file.tempFilePath)
-            const deflated = Buffer.from(Pako.ungzip(content))
-            const result = decode(deflated, {
-                unnamed: false
-            })
-            if (result.value == null) {
-                throw new Error("decoded value is null");
-            }
-            if (result.length > app.config.maxSchematicSize) {
-                fs.unlinkSync(file.tempFilePath);
-                return res.status(413).send({
-                    error: `Submitted NBT file exceeds max size of ${app.config.maxSchematicSize} bytes`
-                })
-            }
+            await validateNBTFile(file, app);
+            const {downloadKey, deleteKey} = await generateKeys(app);
+            const record = await storeSchematicRecord(app, file, downloadKey, deleteKey);
+            res.status(200).send({download_key: record.downloadKey, delete_key: record.deleteKey});
         } catch (error) {
             app.logger.debug('Invalid request due to invalid nbt content: ' + error);
             fs.unlinkSync(file.tempFilePath);
-            return res.status(400).send({
-                error: 'File is not valid NBT'
-            });
+            return res.status(400).send({error: 'Invalid nbt content: ' + error});
         }
-
-        // Generate keys
-        let downloadKey, deleteKey;
-        try {
-            downloadKey = await app.dataStorage.generateDownloadKey(app.config.maxIterations);
-            deleteKey = await app.dataStorage.generateDeletionKey(app.config.maxIterations);
-        } catch (error) {
-            fs.unlinkSync(file.tempFilePath);
-            return res.status(500).send({
-                error: 'Failed to generate download and / or deletion key'
-            });
-        }
-
-        // Insert record into accounting table
-        try {
-            const record = await app.dataStorage.storeSchematicRecord({
-                downloadKey, deleteKey,
-                fileName: file.name
-            });
-            await file.mv(path.join(SCHEMATIC_DIR, downloadKey))
-            res.status(200).send({
-                download_key: record.downloadKey,
-                delete_key: record.deleteKey
-            });
-        } catch (error) {
-            fs.unlinkSync(file.tempFilePath);
-            return res.status(500).send({
-                error: 'Failed to persist data in table'
-            });
-        }
-    }));
+    });
 
     return router;
-}
+};
+
+export const UPLOADIMG_ROUTER = (app: Arkitektonika, router: express.Application) => {
+    router.options('/uploadimg', handleOptionsRequest);
+
+    router.post('/uploadimg', fileUpload(UPLOAD_OPTIONS), async (req, res) => {
+        const file = req.files?.image as UploadedFile;
+
+        if (!file) {
+            return res.status(400).send({ error: 'Missing file' });
+        }
+
+        try {
+            await validateImageFile(file, app);
+            const {downloadKey, deleteKey} = await generateKeys(app);
+            const record = await storeSchematicRecord(app, file, downloadKey, deleteKey);
+            res.status(200).send({download_key: record.downloadKey, delete_key: record.deleteKey});
+        } catch (error) {
+            app.logger.debug('Invalid request due to invalid nbt content: ' + error);
+            fs.unlinkSync(file.tempFilePath);
+            return res.status(400).send({error: 'Invalid nbt content: ' + error});
+        }
+    });
+
+    return router;
+};

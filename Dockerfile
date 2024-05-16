@@ -26,7 +26,7 @@ EXPOSE 3000
 CMD [ "node", "app/launch.js" ]
 
 LABEL \
-  org.opencontainers.image.vendor="IntellectualSites" \
+  org.opencontainers.image.vendor="AlsaceTeam" \
   org.opencontainers.image.title="Arkitektonika" \
   org.opencontainers.image.description="A REST repository for NBT data for Minecraft" \
   org.opencontainers.image.url="https://github.com/IntellectualSites" \

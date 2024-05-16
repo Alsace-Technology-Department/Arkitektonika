@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import path from 'path';
 import {decode} from 'nbt-ts';
 import Pako from 'pako';
-import {toSchem, writeNBTFile} from "../../service/schemService.js";
+import {toSchem} from "../../service/schemService.js";
 
 // 配置文件上传选项
 const UPLOAD_OPTIONS: fileUpload.Options = {
@@ -44,7 +44,7 @@ const validateNBTFile = async (file: UploadedFile, app: Arkitektonika) => {
 const validateImageFile = async (file: UploadedFile, app: Arkitektonika) => {
     const content = fs.readFileSync(file.tempFilePath); // 读取临时文件内容
     const buffer = await toSchem(content); // 将图像转换为 Schematic NBT 格式
-    const result = decode(buffer);
+    const result = decode(Buffer.from(Pako.ungzip(buffer)));
 
     if (result.value == null) {
         throw new Error("decoded value is null");
@@ -110,7 +110,7 @@ export const UPLOADIMG_ROUTER = (app: Arkitektonika, router: express.Application
         const file = req.files?.image as UploadedFile;
 
         if (!file) {
-            return res.status(400).send({ error: 'Missing file' });
+            return res.status(400).send({error: 'Missing file'});
         }
 
         try {

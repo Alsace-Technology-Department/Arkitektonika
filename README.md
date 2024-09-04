@@ -6,14 +6,16 @@
 
 ---
 
+来自 [Arkitektonika](https://github.com/IntellectualSites/Arkitektonika) 的Fork
+
 Arkitektonika 是一个用于 NBT 数据的 REST 存储库。它接受有效的 NBT 数据上传，并将其存储在本地文件夹中，同时在本地 SQLite
-数据库中记录其元数据。可以选择通过运行 prune 脚本，根据可配置的年龄来过期上传的文件。通过其删除密钥，文件始终可以被删除。
+数据库中记录其元数据。可以选择通过运行 prune 脚本，根据可配置的时间戳来过期上传的文件。通过其删除密钥，文件可以被永久删除。
 
 示例实例：
 
-| 地址                           | 过期时间 |
-|------------------------------|------|
-| https://api.schematic.cloud/ | 30 天 |
+| 地址                             | 过期时间 |
+|--------------------------------|------|
+| https://api.schem.alsace.team/ | 30 天 |
 
 ## 运行
 
@@ -66,12 +68,12 @@ services:
     image: alsacework/arkitektonika:latest
     restart: unless-stopped
     volumes:
-      - ./data:/app/data # 挂载包含配置文件、数据库和示意图存储的 data 文件夹
+      - /home/ark/data:/data # 挂载包含配置文件、数据库和示意图存储的 data 文件夹
     environment:
       - LOG_LEVEL=DEBUG   # 如果应该将调试日志打印到控制台
 ```
 
-`/app/data` 挂载到主机的 `/data`，因为该文件夹包含持久数据。
+`/data` 挂载到主机的 `/home/ark/data`，因为该文件夹包含持久数据。
 
 ## 清理数据
 

@@ -7,3 +7,4 @@ renovate.json
 LICENSE
 README.md
 dist/
+.github/

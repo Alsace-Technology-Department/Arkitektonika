@@ -35,7 +35,9 @@ const validateNBTFile = async (file: UploadedFile, app: Arkitektonika) => {
     }
 
     if (result.length > app.config.maxSchematicSize) {
-        fs.unlinkSync(file.tempFilePath);
+        if (fs.existsSync(file.tempFilePath)) {
+            fs.unlinkSync(file.tempFilePath);
+        }
         throw new Error(`Submitted NBT file exceeds max size of ${app.config.maxSchematicSize} bytes`);
     }
 
@@ -52,7 +54,9 @@ const validateImageFile = async (file: UploadedFile, app: Arkitektonika) => {
     }
 
     if (result.length > app.config.maxSchematicSize) {
-        fs.unlinkSync(file.tempFilePath);
+        if (fs.existsSync(file.tempFilePath)) {
+            fs.unlinkSync(file.tempFilePath);
+        }
         throw new Error(`Submitted NBT file exceeds max size of ${app.config.maxSchematicSize} bytes`);
     }
 
@@ -62,7 +66,6 @@ const validateImageFile = async (file: UploadedFile, app: Arkitektonika) => {
 };
 
 // 生成下载和删除键
-
 const generateKeys = async (app: Arkitektonika) => {
     const downloadKey = await app.dataStorage.generateDownloadKey(app.config.maxIterations);
     const deleteKey = await app.dataStorage.generateDeletionKey(app.config.maxIterations);
@@ -99,7 +102,9 @@ export const UPLOAD_ROUTER = (app: Arkitektonika, router: express.Application) =
             res.status(200).send({ download_key: record.downloadKey, delete_key: record.deleteKey });
         } catch (error) {
             app.logger.debug('Invalid request due to invalid nbt content: ' + error);
-            fs.unlinkSync(file.tempFilePath);
+            if (fs.existsSync(file.tempFilePath)) {
+                fs.unlinkSync(file.tempFilePath);
+            }
             return res.status(400).send({ error: 'Invalid nbt content: ' + error });
         }
     });
@@ -124,7 +129,9 @@ export const UPLOADIMG_ROUTER = (app: Arkitektonika, router: express.Application
             res.status(200).send({ download_key: record.downloadKey, delete_key: record.deleteKey });
         } catch (error) {
             app.logger.debug('Invalid request due to invalid nbt content: ' + error);
-            fs.unlinkSync(file.tempFilePath);
+            if (fs.existsSync(file.tempFilePath)) {
+                fs.unlinkSync(file.tempFilePath);
+            }
             return res.status(400).send({ error: 'Invalid nbt content: ' + error });
         }
     });

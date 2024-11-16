@@ -22,7 +22,6 @@ ENV NODE_ENV=production
 COPY package.json ./
 COPY yarn.lock ./
 COPY .yarnrc.yml ./
-RUN yarn install --only=production
 COPY --from=builder /usr/src/app/dist/app ./app
 
 EXPOSE 3000
